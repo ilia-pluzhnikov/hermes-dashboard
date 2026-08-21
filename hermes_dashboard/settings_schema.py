@@ -280,6 +280,8 @@ SCHEMA = [
                 {"path": "views.config_map", "kind": "bool", "label": "Build the Config view",
                  "help": "Needs the Hermes venv python. Off removes the tab entirely."},
                 {"path": "views.connectors", "kind": "bool", "label": "Build the capability map"},
+                {"path": "views.provenance", "kind": "bool", "label": "Build the Data audit page",
+                 "help": "Renders the hand-curated audit file (paths.provenance). Off removes the tab."},
                 {"path": "connectors.skills_from_gitignore", "kind": "bool", "label": "«Our» skills from .gitignore",
                  "help": "On: custom skills are the allowlist entries !/skills/<name>/. Off: every directory in skills/."},
                 {"path": "config_map.truth_ref", "kind": "text", "label": "Git ref of the source of truth",

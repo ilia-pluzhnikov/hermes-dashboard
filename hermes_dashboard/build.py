@@ -17,8 +17,8 @@ import tempfile
 import time
 from pathlib import Path
 
-from . import (gen_banner, gen_connectors, gen_cron, gen_events, gen_security, gen_usage,
-               history, render, sysinfo)
+from . import (gen_banner, gen_connectors, gen_cron, gen_events, gen_provenance, gen_security,
+               gen_usage, history, render, sysinfo)
 from .common import (active, deliberate_paid, esc, fallback, fmt_tok, home, paid, scalar,
                      yaml_get)
 from .config import Config, load_budgets_env, load_config, set_current
@@ -395,6 +395,12 @@ def build_all(cfg: Config, only_lang: str | None = None, out_dir: Path | None = 
             if chtml:
                 _atomic_write(ctarget, chtml)
                 written.append(ctarget)
+        if cfg.get("views.provenance", False):
+            ptarget = out_dir / render.page_name(lang, cfg, "provenance")
+            phtml = _safe("provenance", lambda: gen_provenance.build_page(cfg, lang, host))
+            if phtml:
+                _atomic_write(ptarget, phtml)
+                written.append(ptarget)
     lock.__exit__(None, None, None)
     return written
 

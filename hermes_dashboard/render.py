@@ -89,6 +89,8 @@ ICONS = {
     "map": _svg('<path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/>'),
     "set": _svg('<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1'
                 'M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/>'),
+    "prov": _svg('<path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>'
+                 '<rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/>'),
 }
 
 
@@ -176,6 +178,10 @@ def rail(cfg: Config, lang: str, active_view: str, gw_dot: str, gw_txt: str, syn
         cls = ' class="cur"' if current_page == "connectors" else ""
         conn = link_prefix + page_name(lang, cfg, "connectors")
         nav += f'<a{cls} href="{conn}">{ICONS["map"]}{esc(_("Capability map"))}</a>'
+    if cfg.get("views.provenance", False):
+        cls = ' class="cur"' if current_page == "provenance" else ""
+        prov = link_prefix + page_name(lang, cfg, "provenance")
+        nav += f'<a{cls} href="{prov}">{ICONS["prov"]}{esc(_("Data audit"))}</a>'
     settings = cfg.get("paths.settings_url", "")
     if current_page == "settings":
         nav += f'<a class="cur" href="./">{ICONS["set"]}{esc(_("Settings"))}</a>'
@@ -210,6 +216,10 @@ def bottom_tabs(cfg: Config, lang: str, active_view: str, current_page: str = "i
         cls = ' class="on"' if current_page == "connectors" else ""
         conn = link_prefix + page_name(lang, cfg, "connectors")
         tabs += f'<a{cls} href="{conn}">{ICONS["map"]}{esc(_("Map"))}</a>'
+    if cfg.get("views.provenance", False):
+        cls = ' class="on"' if current_page == "provenance" else ""
+        prov = link_prefix + page_name(lang, cfg, "provenance")
+        tabs += f'<a{cls} href="{prov}">{ICONS["prov"]}{esc(_("Audit"))}</a>'
     if current_page == "settings":
         tabs += f'<a class="on" href="./">{ICONS["set"]}{esc(_("Settings"))}</a>'
     return f'<nav class="segs">{tabs}</nav>'

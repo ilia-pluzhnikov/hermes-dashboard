@@ -41,6 +41,7 @@ DEFAULTS: dict[str, Any] = {
         "config_descriptions": {},        # {"en": "dashboard/config-descriptions.en.json", "ru": ...}
         "history_csv": "cache/dashboard-history.csv",
         "settings_url": "settings/",      # link in the sidebar; "" hides it
+        "provenance": "dashboard/provenance.json",  # hand-curated data audit (views.provenance)
     },
     "i18n": {"default": "en", "languages": ["en", "ru"]},
     "timezone": {"name": "UTC", "offset_hours": 0, "label": "UTC"},
@@ -135,7 +136,8 @@ DEFAULTS: dict[str, Any] = {
     "views": {
         # Google Fonts is the only request a page makes to anything but your own
         # server. Off = system fonts and a page that phones nobody.
-        "web_fonts": True,"config_map": True, "connectors": True},
+        # provenance defaults to off: the audit file is opt-in, hand-curated work.
+        "web_fonts": True,"config_map": True, "connectors": True, "provenance": False},
     "config_map": {"truth_ref": "origin/main"},
 }
 

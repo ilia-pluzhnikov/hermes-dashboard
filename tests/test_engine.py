@@ -396,6 +396,52 @@ class BuildTests(unittest.TestCase):
         self.assertIn('href="index.ru.html"', en)
         self.assertIn('href="index.html"', ru)
 
+    def test_provenance_page(self):
+        home = make_home()
+        (home / "dashboard").mkdir(exist_ok=True)
+        prov = {"generated": "2026-08-21",
+                "intro": {"en": "hand-checked snapshot", "ru": "снимок ручной сверки"},
+                "sections": [{"title": {"en": "Agent", "ru": "Агент"}, "items": [
+                    {"key": "agent.name", "value": "TestAgent", "status": "verified",
+                     "checked": {"en": "the live config"}, "note": {"en": "real value"}},
+                    {"key": "agent.description", "value": "…", "status": "template"},
+                    {"key": "providers.primary.subscription_usd_month", "value": "0", "status": "pending"},
+                    {"key": "security.tirith_regex", "value": "", "status": "disabled"},
+                ]}]}
+        (home / "dashboard" / "provenance.json").write_text(json.dumps(prov), encoding="utf-8")
+        pages = self._build(home, {"views": {"config_map": False, "provenance": True}})
+        self.assertIn("provenance.html", pages)
+        self.assertIn("provenance.ru.html", pages)
+        en, ru = pages["provenance.html"], pages["provenance.ru.html"]
+        self.assertIn("agent.name", en)
+        self.assertIn("hand-checked snapshot", en)
+        self.assertIn("the live config", en)
+        # statuses land on the existing card palette so the stripe colours work
+        for st in ("ok", "no", "part", "avail"):
+            self.assertIn(f'data-status="{st}"', en)
+        self.assertIn("VERIFIED", en)
+        self.assertIn("ПРОВЕРЕНО", ru)
+        self.assertIn("снимок ручной сверки", ru)
+        for name, html in ((n, pages[n]) for n in ("provenance.html", "provenance.ru.html")):
+            self.assertEqual(html.count("<div"), html.count("</div>"), f"div balance in {name}")
+        # both nav surfaces of the index link to the audit page
+        self.assertEqual(pages["index.html"].count('href="provenance.html"'), 2)
+        self.assertIn('href="provenance.ru.html"', pages["index.ru.html"])
+        # the audit page itself must not contain Cyrillic in the English build
+        stripped = re.sub(r"<style>.*?</style>", "", en, flags=re.S)
+        stripped = stripped.replace("снимок ручной сверки", "")   # agent data, not UI
+        self.assertIsNone(re.search(r"[А-Яа-яЁё]", stripped), "Cyrillic leaked into the English audit page")
+
+    def test_provenance_off_by_default_and_fail_open(self):
+        home = make_home()
+        pages = self._build(home)
+        self.assertNotIn("provenance.html", pages)
+        self.assertNotIn('href="provenance.html"', pages["index.html"])
+        # flag on but no provenance.json: an honest empty state, not a dead link or a crash
+        pages = self._build(home, {"views": {"config_map": False, "provenance": True}})
+        self.assertIn("provenance.html", pages)
+        self.assertIn("provenance.json", pages["provenance.html"])
+
 
 class SettingsTests(unittest.TestCase):
     def _state(self, cfg_data=None):
