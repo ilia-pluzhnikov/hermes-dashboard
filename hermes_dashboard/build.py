@@ -175,13 +175,17 @@ def view_overview(cfg: Config, k: dict, deltas: dict, host: dict, lang: str) -> 
     if (k.get("PAIDCLI7") or 0) > 0:
         fb_sub = _("forced · plus {n} deliberate paid runs outside the interactive sources").format(n=k["PAIDCLI7"])
     dot = host["dot"]
+    # with a docker gateway the tile shows the container's uptime (restarts are
+    # real events) and keeps the server uptime alongside, so neither is lost
+    up_line = (f'{_("uptime")} {esc(host["gup"])} · {_("server")} {esc(host["up"])}'
+               if host.get("gup") else f'{_("uptime")} {esc(host["up"])}')
     return (
         f'<section class="view on" id="v-over">'
         f'<div class="vh"><div class="kick">{esc(cfg.text(cfg.get("agent.tagline"), lang))}</div>'
         f'<h1>{_("System overview")}</h1><p>{esc(cfg.text(cfg.get("agent.description"), lang))}</p>{fam}'
         f'<div class="meta">{_("built")} <b>{esc(host["now"])}</b> · {esc(host["freq"])} · {_("sync")} <b>{esc(host["sync"])}</b> · {_("commit")} <b>{esc(host["commit"])}</b></div></div>'
         '<div class="kpis prime">'
-        f'<div class="kpi ok"><div class="l"><span class="pip on" style="background:{dot}"></span>Gateway</div><div class="v">{esc(host["gwt"])}</div><div class="x">{_("uptime")} {esc(host["up"])}</div></div>'
+        f'<div class="kpi ok"><div class="l"><span class="pip on" style="background:{dot}"></span>Gateway</div><div class="v">{esc(host["gwt"])}</div><div class="x">{up_line}</div></div>'
         f'<div class="kpi"><div class="l">{_("Sessions · 7 days")}</div><div class="v">{s(k["SESS7"])}</div><div class="x">{_("with a model call")} · cron: {s(k["CRON7"])} · {_("no answer")}: {s(k["PASSIVE7"])} {deltas.get("sess7", "")}</div></div>'
         f'<div class="kpi {fbclass}"><div class="l">{_("Fallback · 7 days")}</div><div class="v">{s(fb)}</div><div class="x">{esc(fb_sub)} {deltas.get("fallback7", "")}</div></div>'
         f'<div class="kpi info"><div class="l">{_("Input · 7 days")}</div><div class="v">{fmt_tok(k["TOK7_IN"] or 0)}</div><div class="x">cron: {fmt_tok(k["TOK7_CRON"] or 0)} {deltas.get("input7d", "")}</div></div>'
@@ -364,7 +368,8 @@ def build_all(cfg: Config, only_lang: str | None = None, out_dir: Path | None = 
         host = {
             "dot": "var(--ok)" if gw == "active" else "var(--no)",
             "gwt": _("running") if gw == "active" else gw,
-            "up": sysinfo.uptime_text(), "load": sysinfo.loadavg(), "cores": sysinfo.cores(),
+            "up": sysinfo.uptime_text(), "gup": sysinfo.gateway_uptime(),
+            "load": sysinfo.loadavg(), "cores": sysinfo.cores(),
             "disk": disk, "diskp": diskp, "ram": sysinfo.ram(), "now": sysinfo.now_label(),
             "sync": sysinfo.last_sync(), "sync_at": sysinfo.cron_hhmm("autosync"),
             "sha": sha, "commit": commit,

@@ -24,18 +24,31 @@ def _run(cmd: list[str], timeout: int = 10) -> str:
 
 
 def gateway_state() -> str:
+    """paths.gateway_container (docker) wins over paths.gateway_unit (systemd).
+
+    A dockerised gateway is invisible to systemctl — asking systemd about it
+    yields a red "unknown" forever. With a container name set, the tile asks
+    docker instead, and a healthcheck failure surfaces as "unhealthy" (running
+    but broken is the state worth seeing most).
+    """
+    cont = str(current().get("paths.gateway_container", "") or "")
+    if cont:
+        out = _run(["docker", "inspect", "-f",
+                    "{{.State.Status}}{{with .State.Health}} {{.Status}}{{end}}", cont]).split()
+        if not out:
+            return "unknown"
+        status, health = out[0], (out[1] if len(out) > 1 else "")
+        if status == "running":
+            return "unhealthy" if health == "unhealthy" else "active"
+        return status
     unit = str(current().get("paths.gateway_unit", "hermes-gateway"))
-    out = _run(["systemctl", "is-active", unit]).strip()
-    return out or "unknown"
+    out2 = _run(["systemctl", "is-active", unit]).strip()
+    return out2 or "unknown"
 
 
-def uptime_text() -> str:
-    """'5 w 2 d' style, from /proc/uptime (locale-independent, translated)."""
-    try:
-        secs = float(Path("/proc/uptime").read_text().split()[0])
-    except (OSError, ValueError, IndexError):
-        return "—"
-    d, rem = divmod(int(secs), 86400)
+def _dur(secs: int) -> str:
+    """'5 w 2 d' style duration (locale-independent, translated)."""
+    d, rem = divmod(secs, 86400)
     h, rem = divmod(rem, 3600)
     m = rem // 60
     w, d = divmod(d, 7)
@@ -49,6 +62,36 @@ def uptime_text() -> str:
     if not w and not d and m:
         parts.append(f"{m} {_('min')}")
     return " ".join(parts) or f"0 {_('min')}"
+
+
+def uptime_text() -> str:
+    """Server uptime from /proc/uptime."""
+    try:
+        secs = float(Path("/proc/uptime").read_text().split()[0])
+    except (OSError, ValueError, IndexError):
+        return "—"
+    return _dur(int(secs))
+
+
+def gateway_uptime() -> str:
+    """Container uptime from docker StartedAt; "" when no container is set.
+
+    The fractional part is cut before parsing: docker prints nanoseconds,
+    which no strptime format accepts portably.
+    """
+    cont = str(current().get("paths.gateway_container", "") or "")
+    if not cont:
+        return ""
+    out = _run(["docker", "inspect", "-f", "{{.State.StartedAt}}", cont]).strip()
+    m = re.match(r"(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)", out)
+    if not m:
+        return ""
+    try:
+        started = datetime.strptime(m.group(1), "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return ""
+    secs = int((datetime.now(timezone.utc) - started).total_seconds())
+    return _dur(secs) if secs >= 0 else ""
 
 
 def loadavg() -> str:

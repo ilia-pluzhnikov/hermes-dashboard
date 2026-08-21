@@ -42,6 +42,7 @@ DEFAULTS: dict[str, Any] = {
         "history_csv": "cache/dashboard-history.csv",
         "settings_url": "settings/",      # link in the sidebar; "" hides it
         "provenance": "dashboard/provenance.json",  # hand-curated data audit (views.provenance)
+        "gateway_container": "",          # docker container of the gateway; set → wins over gateway_unit
     },
     "i18n": {"default": "en", "languages": ["en", "ru"]},
     "timezone": {"name": "UTC", "offset_hours": 0, "label": "UTC"},

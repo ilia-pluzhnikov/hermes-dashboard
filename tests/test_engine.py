@@ -320,6 +320,64 @@ class HardeningTests(unittest.TestCase):
             del os.environ["HERMES_DASHBOARD_ANTHROPIC_COST_CSV"]
 
 
+class SysinfoTests(unittest.TestCase):
+    """Gateway tile: the docker-container path must win over systemd when set."""
+
+    def setUp(self):
+        from hermes_dashboard import sysinfo
+        self.sysinfo = sysinfo
+        self.real_run = sysinfo._run
+        i18n.set_lang("en")
+
+    def tearDown(self):
+        self.sysinfo._run = self.real_run
+        config.set_current(config.Config({}))
+
+    def test_gateway_state_prefers_docker_container(self):
+        config.set_current(config.Config({"paths": {"gateway_container": "hermes"}}))
+        calls = []
+
+        def fake(cmd, timeout=10):
+            calls.append(cmd)
+            return "running healthy\n"
+
+        self.sysinfo._run = fake
+        self.assertEqual(self.sysinfo.gateway_state(), "active")
+        self.assertEqual(calls[0][0], "docker", "with a container set, systemd must not be asked")
+        self.sysinfo._run = lambda cmd, timeout=10: "running unhealthy\n"
+        self.assertEqual(self.sysinfo.gateway_state(), "unhealthy")
+        self.sysinfo._run = lambda cmd, timeout=10: "running\n"
+        self.assertEqual(self.sysinfo.gateway_state(), "active", "no healthcheck is not a failure")
+        self.sysinfo._run = lambda cmd, timeout=10: "exited\n"
+        self.assertEqual(self.sysinfo.gateway_state(), "exited")
+        self.sysinfo._run = lambda cmd, timeout=10: ""
+        self.assertEqual(self.sysinfo.gateway_state(), "unknown")
+
+    def test_gateway_state_without_container_keeps_systemd_path(self):
+        config.set_current(config.Config({}))
+        calls = []
+
+        def fake(cmd, timeout=10):
+            calls.append(cmd)
+            return ""
+
+        self.sysinfo._run = fake
+        self.assertEqual(self.sysinfo.gateway_state(), "unknown")
+        self.assertEqual(calls[0][0], "systemctl")
+
+    def test_gateway_uptime_from_docker_started_at(self):
+        from datetime import datetime, timedelta, timezone as tzu
+        config.set_current(config.Config({"paths": {"gateway_container": "hermes"}}))
+        started = (datetime.now(tzu.utc) - timedelta(days=3, hours=5)).strftime("%Y-%m-%dT%H:%M:%S")
+        self.sysinfo._run = lambda cmd, timeout=10: started + ".123456789Z\n"
+        self.assertIn("3 d", self.sysinfo.gateway_uptime())
+        # garbage or a missing container must not break the tile
+        self.sysinfo._run = lambda cmd, timeout=10: ""
+        self.assertEqual(self.sysinfo.gateway_uptime(), "")
+        config.set_current(config.Config({}))
+        self.assertEqual(self.sysinfo.gateway_uptime(), "", "no container → no container uptime")
+
+
 class BuildTests(unittest.TestCase):
     def _build(self, home: Path, extra: dict | None = None) -> dict[str, str]:
         cfgp = home / "dashboard" / "dashboard.json"

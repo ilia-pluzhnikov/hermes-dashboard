@@ -133,6 +133,9 @@ SCHEMA = [
                  "help": "If set, the Config view runs its inline JS through node as a self-check before publishing."},
                 {"path": "paths.gateway_unit", "kind": "text", "label": "systemd unit of the gateway",
                  "help": "Checked with systemctl is-active for the Gateway tile."},
+                {"path": "paths.gateway_container", "kind": "text", "label": "docker container of the gateway",
+                 "help": "If set, the Gateway tile asks docker inspect (status + healthcheck + container "
+                         "uptime) instead of systemd."},
                 {"path": "paths.settings_url", "kind": "text", "label": "Settings link on the dashboard",
                  "help": "Relative URL of this page; empty removes the link from the sidebar."},
             ]},
