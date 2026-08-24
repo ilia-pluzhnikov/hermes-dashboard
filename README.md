@@ -195,6 +195,21 @@ list the code in `i18n.languages`, and fill in whatever
 `python tools/extract_strings.py <code>` prints as missing — the test suite fails while a
 locale is incomplete.
 
+## Brand marks
+
+Rows in the limits section and the connector cards carry the vendor's logo when one is
+known. The marks live in `hermes_dashboard/brand_icons.py` as inline SVG paths — no image
+files, no CDN, so a built page stays self-contained. They render monochrome through
+`currentColor`: the dashboard ships two themes, and a black or white brand colour would
+disappear in one of them; in the limits section colour is also already spoken for, since
+it encodes how full a quota is.
+
+To add one: put the vendor's path(s) and `viewBox` into `ICONS` (Simple Icons is CC0 and
+covers most vendors; otherwise the vendor's own `favicon.svg` usually works, and a wordmark
+can be cropped to its mark by keeping the first path and tightening the `viewBox`), then map
+a lowercase substring of the service name to that slug in `MATCH`. A service with no entry
+renders without a mark — never a broken image.
+
 ## Deployment notes
 
 * Regenerate from cron (`examples/crontab`). A build takes seconds and writes atomically,
