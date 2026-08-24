@@ -157,10 +157,16 @@ def chain_card(cfg: Config, state: dict) -> str:
         nodes += node("free", _("reserve · free"), str(f.get("label", f.get("id"))), _("free key · last resort"), "$0")
     chain = " → ".join([str(p.get("label", p["id"])) for p in cfg.get("providers.paid", [])]
                        + [str(f.get("label", f.get("id"))) for f in cfg.get("providers.free", [])])
-    algo = _("<b>{p}</b> answers by default. When it is unavailable (429/529/503/connection) the request walks the chain: <b>{c}</b> — a stepwise degradation by cost and quality, the user is never left without an answer. Simple reminders run as <b>script-only cron</b> without an inference call.").format(
-        p=esc(prim.get("label", "primary")), c=esc(chain) or "—")
+    if chain:
+        algo = _("<b>{p}</b> answers by default. When it is unavailable (429/529/503/connection) the request walks the chain: <b>{c}</b> — a stepwise degradation by cost and quality, the user is never left without an answer. Simple reminders run as <b>script-only cron</b> without an inference call.").format(
+            p=esc(prim.get("label", "primary")), c=esc(chain))
+        note = _("primary — decisions · on failure — the fallback chain")
+    else:
+        algo = _("<b>{p}</b> answers every request — no fallback providers are configured: when it is unavailable (429/529/503/connection) the agent waits out the cooldown and retries instead of degrading to another model. Simple reminders run as <b>script-only cron</b> without an inference call.").format(
+            p=esc(prim.get("label", "primary")))
+        note = _("primary — decisions · no fallbacks configured")
     return (f'<div class="sec"><div class="sec-h"><h2>{_("Models and routing")}</h2><span class="ln"></span>'
-            f'<span class="note">{_("primary — decisions · on failure — the fallback chain")}</span></div>'
+            f'<span class="note">{note}</span></div>'
             f'<div class="card full"><h3>{_("Routing and fallback policy")}</h3><div class="chainv">{nodes}</div>'
             f'<div class="algo">{algo}</div></div></div>')
 
