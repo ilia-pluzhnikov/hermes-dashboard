@@ -388,10 +388,10 @@ body.lit .tilebase>.glow,body.lit .tilebase>.rim{opacity:1}
 /* .bi — a service brand mark (brand_icons.py). Monochrome via currentColor, so it
    inherits the colour of its own caption and survives both themes. Dimmed a
    little: it labels the row, it should not compete with the bar's colour. */
-.bi{width:30px;height:30px;flex:0 0 auto;vertical-align:-9px;margin-right:11px;opacity:.8}
+.bi{width:24px;height:24px;flex:0 0 auto;vertical-align:-7px;margin-right:10px;opacity:.8}
 .limits .ubh span{display:inline-flex;align-items:center}
 .ccard .nm{display:flex;align-items:center}
-.ccard .nm .bi{width:28px;height:28px;margin-right:10px;vertical-align:baseline}
+.ccard .nm .bi{margin-right:9px;vertical-align:baseline}
 .umrow{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:15px;position:relative;z-index:2}
 .um{background:var(--tile2);border:1px solid var(--edge2);border-radius:var(--radius-s);padding:9px 11px}
 .uml{font-family:var(--f-num);font-size:11px;color:var(--ink3);font-weight:500;text-transform:uppercase;
