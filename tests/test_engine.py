@@ -542,6 +542,35 @@ class BuildTests(unittest.TestCase):
         pages = self._build(home)
         self.assertNotIn("External service limits", pages["connectors.html"])
 
+    def test_web_access_grouped_with_quota_awareness(self):
+        home = make_home()
+        (home / ".env").write_text(
+            "TAVILY_API_KEY=placeholder\nBRAVE_SEARCH_API_KEY=placeholder\nBROWSERBASE_API_KEY=placeholder\n",
+            encoding="utf-8")
+        cfg_yaml = (home / "config.yaml").read_text(encoding="utf-8")
+        (home / "config.yaml").write_text(cfg_yaml + "web:\n  search_backend: brave-free\n", encoding="utf-8")
+        (home / "dashboard").mkdir(exist_ok=True)
+        lim = {"generated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "services": [
+            {"name": "Tavily", "used": 1001, "limit": 1000, "note": "over"},
+            {"name": "Browserbase", "used": 44, "limit": 60, "note": "fine"},
+        ]}
+        (home / "dashboard" / "limits.json").write_text(json.dumps(lim), encoding="utf-8")
+        pages = self._build(home)
+        en = pages["connectors.html"]
+        # pinned backend is the active one; the other key is standby
+        self.assertRegex(en, r'Brave Free</div><div class="sv">search · active backend')
+        self.assertRegex(en, r'Tavily</div><div class="sv">search · standby, key present')
+        # Tavily is at 100% in limits.json → its cards drop to "partly" with a pointer
+        self.assertIn("Quota exhausted — see the limits section.", en)
+        self.assertRegex(en, r'Tavily</div><div class="sv">search[^<]*</div></div><span class="pill p-part"')
+        # extract goes through Tavily and inherits the dead quota
+        self.assertRegex(en, r'Tavily</div><div class="sv">page reading \(web_extract\)')
+        # Browserbase is under its limit → stays ok
+        self.assertRegex(en, r'Browserbase</div><div class="sv">browser · cloud browser</div></div><span class="pill p-ok"')
+        ru = pages["connectors.ru.html"]
+        self.assertIn("поиск · активный бэкенд", ru)
+        self.assertIn("чтение страниц (web_extract)", ru)
+
 
 class SettingsTests(unittest.TestCase):
     def _state(self, cfg_data=None):

@@ -233,17 +233,61 @@ def build_engine(cfg: Config, y: dict, lang: str) -> list[dict]:
     return cards
 
 
-def build_web(cfg: Config, y: dict, lang: str) -> list[dict]:
+# The runtime registry's static preference order (no per-request failover):
+# whoever is first with a key wins unless web.search_backend pins one.
+SEARCH_BACKENDS = [
+    ("firecrawl", "FIRECRAWL_API_KEY", "Firecrawl"),
+    ("parallel", "PARALLEL_API_KEY", "Parallel"),
+    ("tavily", "TAVILY_API_KEY", "Tavily"),
+    ("exa", "EXA_API_KEY", "Exa"),
+    ("brave-free", "BRAVE_SEARCH_API_KEY", "Brave Free"),
+]
+EXTRACT_BACKENDS = [(b, k, l) for b, k, l in SEARCH_BACKENDS if b != "brave-free"]
+
+
+def build_web(cfg: Config, y: dict, lang: str, over: set[str] | None = None) -> list[dict]:
+    """Web access grouped by function: search → page reading → browser.
+
+    Mirrors the runtime's static backend choice; a provider whose name is in
+    `over` (services at 100 % in paths.limits) renders as "partly" —
+    configured, but currently out of quota.
+    """
     keys = env_key_names()
-    cards = []
+    dead = {s.lower() for s in (over or set())}
     web = y.get("web") or {}
-    sb = web.get("search_backend") or ("tavily" if "TAVILY_API_KEY" in keys else ("auto" if keys & {"EXA_API_KEY", "FIRECRAWL_API_KEY", "PARALLEL_API_KEY"} else ""))
-    if sb:
-        cards.append({"nm": _("Web search"), "sv": sb, "status": "ok",
+    cards = []
+
+    present = [(b, lbl) for b, k, lbl in SEARCH_BACKENDS if k in keys]
+    active = str(web.get("search_backend") or web.get("backend") or (present[0][0] if present else ""))
+    for b, lbl in present:
+        st = "ok" if b == active else "avail"
+        role = _("active backend") if b == active else _("standby, key present")
+        ds = _desc(cfg, f"web:search:{b}", lang, _("web_search backend."))
+        if lbl.lower() in dead:
+            st = "part"
+            ds += " " + _("Quota exhausted — see the limits section.")
+        cards.append({"nm": lbl, "sv": _("search") + " · " + role, "status": st, "ds": ds})
+    if not present and active:
+        cards.append({"nm": active, "sv": _("search") + " · " + _("active backend"), "status": "ok",
                       "ds": _desc(cfg, "web:search", lang, _("web_search / web_extract: internet search and page reading."))})
+
+    ex_present = [(b, lbl) for b, k, lbl in EXTRACT_BACKENDS if k in keys]
+    ex = str(web.get("extract_backend") or web.get("backend") or (ex_present[0][0] if ex_present else ""))
+    if ex:
+        ex_lbl = next((lbl for b, lbl in ex_present if b == ex), ex)
+        st = "ok"
+        ds = _desc(cfg, "web:extract", lang, _("web_extract: fetching and reading pages."))
+        if ex_lbl.lower() in dead:
+            st = "part"
+            ds += " " + _("Quota exhausted — see the limits section.")
+        cards.append({"nm": ex_lbl, "sv": _("page reading (web_extract)"), "status": st, "ds": ds})
+
     if "BROWSERBASE_API_KEY" in keys:
-        cards.append({"nm": "Browserbase", "sv": _("cloud browser"), "status": "ok",
-                      "ds": _desc(cfg, "web:browserbase", lang, _("Real Chromium in the cloud driven by the agent (navigate/click/type/screenshot → vision)."))})
+        st = "part" if "browserbase" in dead else "ok"
+        ds = _desc(cfg, "web:browserbase", lang, _("Real Chromium in the cloud driven by the agent (navigate/click/type/screenshot → vision)."))
+        if st == "part":
+            ds += " " + _("Quota exhausted — see the limits section.")
+        cards.append({"nm": "Browserbase", "sv": _("browser") + " · " + _("cloud browser"), "status": st, "ds": ds})
     elif (y.get("browser") or {}).get("engine"):
         cards.append({"nm": _("Browser"), "sv": str((y.get("browser") or {}).get("engine")), "status": "ok",
                       "ds": _desc(cfg, "web:browser", lang, _("Browser tool of Hermes."))})
@@ -375,11 +419,15 @@ def _extra(cfg: Config, section: str, lang: str) -> list[dict]:
 
 def build_page(cfg: Config, lang: str, host: dict) -> str:
     y = load_yaml_config()
+    ldata = load_limits(cfg) or {}
+    over = {str(s.get("name", "")) for s in ldata.get("services", []) or []
+            if isinstance(s, dict) and not s.get("error")
+            and int(s.get("limit") or 0) > 0 and int(s.get("used") or 0) >= int(s.get("limit") or 0)}
     conn = build_connectors(cfg, y, lang) + _extra(cfg, "connectors", lang)
     plugins = build_plugins(cfg, y, lang) + _extra(cfg, "plugins", lang)
     channels = build_channels(cfg, y, lang) + _extra(cfg, "channels", lang)
     engine = build_engine(cfg, y, lang) + _extra(cfg, "engine", lang)
-    web = build_web(cfg, y, lang) + _extra(cfg, "web", lang)
+    web = build_web(cfg, y, lang, over) + _extra(cfg, "web", lang)
     skills, bundled = build_skills(cfg, lang)
     candidates = _extra(cfg, "candidates", lang)
     crons = cron_count()
