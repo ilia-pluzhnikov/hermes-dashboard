@@ -259,6 +259,7 @@ def build_web(cfg: Config, y: dict, lang: str, over: set[str] | None = None) -> 
 
     present = [(b, lbl) for b, k, lbl in SEARCH_BACKENDS if k in keys]
     active = str(web.get("search_backend") or web.get("backend") or (present[0][0] if present else ""))
+    present.sort(key=lambda p: p[0] != active)   # the active backend leads its group
     for b, lbl in present:
         st = "ok" if b == active else "avail"
         role = _("active backend") if b == active else _("standby, key present")
