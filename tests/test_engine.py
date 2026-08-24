@@ -500,6 +500,41 @@ class BuildTests(unittest.TestCase):
         self.assertIn("provenance.html", pages)
         self.assertIn("provenance.json", pages["provenance.html"])
 
+    def test_limits_bars(self):
+        home = make_home()
+        (home / "dashboard").mkdir(exist_ok=True)
+        lim = {"generated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "services": [
+            {"name": "Tavily", "used": 123, "limit": 1000, "note": {"en": "plan dev", "ru": "план dev"}},
+            {"name": "ElevenLabs", "used": 9000, "limit": 10000, "note": "tier free"},
+            {"name": "GitHub API", "error": "HTTP Error 401: Unauthorized"},
+        ]}
+        (home / "dashboard" / "limits.json").write_text(json.dumps(lim), encoding="utf-8")
+        pages = self._build(home)
+        en, ru = pages["connectors.html"], pages["connectors.ru.html"]
+        self.assertIn("External service limits", en)
+        self.assertIn("Лимиты внешних сервисов", ru)
+        # thresholds land on the shared palette: 12% ok, 90% warning
+        self.assertIn('style="width:12%;background:var(--ok)"', en)
+        self.assertIn('style="width:90%;background:var(--part)"', en)
+        self.assertIn("plan dev", en)
+        self.assertIn("план dev", ru)
+        # a failed collector entry renders as an honest "no data", not a broken bar
+        self.assertIn("no data", en)
+        self.assertIn("HTTP Error 401: Unauthorized", en)
+        # a fresh snapshot carries no stale warning
+        self.assertNotIn("stale — the collector", en)
+        for name in ("connectors.html", "connectors.ru.html"):
+            self.assertEqual(pages[name].count("<div"), pages[name].count("</div>"), f"div balance in {name}")
+        # stale snapshot (>26 h) is flagged
+        lim["generated"] = "2020-01-01T00:00:00Z"
+        (home / "dashboard" / "limits.json").write_text(json.dumps(lim), encoding="utf-8")
+        pages = self._build(home)
+        self.assertIn("stale — the collector has not run for over a day", pages["connectors.html"])
+        # no limits.json → no section at all
+        (home / "dashboard" / "limits.json").unlink()
+        pages = self._build(home)
+        self.assertNotIn("External service limits", pages["connectors.html"])
+
 
 class SettingsTests(unittest.TestCase):
     def _state(self, cfg_data=None):

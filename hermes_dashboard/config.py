@@ -43,6 +43,7 @@ DEFAULTS: dict[str, Any] = {
         "settings_url": "settings/",      # link in the sidebar; "" hides it
         "provenance": "dashboard/provenance.json",  # hand-curated data audit (views.provenance)
         "gateway_container": "",          # docker container of the gateway; set → wins over gateway_unit
+        "limits": "dashboard/limits.json",  # live used/limit snapshot written by an external collector
     },
     "i18n": {"default": "en", "languages": ["en", "ru"]},
     "timezone": {"name": "UTC", "offset_hours": 0, "label": "UTC"},

@@ -138,6 +138,9 @@ SCHEMA = [
                          "uptime) instead of systemd."},
                 {"path": "paths.settings_url", "kind": "text", "label": "Settings link on the dashboard",
                  "help": "Relative URL of this page; empty removes the link from the sidebar."},
+                {"path": "paths.limits", "kind": "text", "label": "Service-limits snapshot (JSON)",
+                 "help": "Written by an external collector; rendered as used/limit bars on the "
+                         "capability map. Empty path or missing file hides the section."},
             ]},
             {"title": "Language and time", "fields": [
                 {"path": "i18n.default", "kind": "text", "label": "Default language", "narrow": True,

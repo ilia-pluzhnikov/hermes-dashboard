@@ -19,7 +19,7 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 
-from .common import env_key_names, esc, home, jobs_path
+from .common import env_key_names, esc, home, jobs_path, ubar
 from .config import Config, current
 from .i18n import _, set_lang
 from . import render, sysinfo
@@ -266,6 +266,63 @@ def build_skills(cfg: Config, lang: str) -> tuple[list[dict], list[str]]:
     return cards, bundled
 
 
+def load_limits(cfg: Config) -> dict | None:
+    """paths.limits — a used/limit snapshot written by an external collector.
+
+    The engine never calls provider APIs itself: whatever script owns the
+    keys writes {"generated": ISO-UTC, "services": [{"name", "used",
+    "limit", "note", "error"}]} and the page renders it as-is.
+    """
+    rel = str(cfg.get("paths.limits", "dashboard/limits.json") or "")
+    if not rel:
+        return None
+    p = cfg.path_in_home(rel)
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except OSError:
+        return None
+    except ValueError as e:
+        sys.stderr.write(f"[connectors] {p} did not parse: {e}\n")
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def limits_section(cfg: Config, lang: str) -> str:
+    data = load_limits(cfg)
+    if not data:
+        return ""
+    rows = []
+    for s in data.get("services", []) or []:
+        if not isinstance(s, dict):
+            continue
+        nm = str(s.get("name", "?"))
+        if s.get("error"):
+            rows.append(f'<div class="ubar"><div class="ubh"><span>{esc(nm)}</span>'
+                        f'<b>{_("no data")}</b></div>'
+                        f'<div class="ubp">{esc(str(s["error"]))}</div></div>')
+            continue
+        try:
+            used, limit = int(s.get("used", 0)), int(s.get("limit", 0))
+        except (TypeError, ValueError):
+            continue
+        rows.append(ubar(nm, used, limit, cfg.text(s.get("note"), lang)))
+    if not rows:
+        return ""
+    sub = _("used / limit · live from provider APIs")
+    gen = str(data.get("generated", ""))
+    if gen:
+        sub += f' · {_("snapshot")} {esc(gen.replace("T", " ").replace("Z", " UTC"))}'
+        try:
+            dt = datetime.strptime(gen[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
+            if (datetime.now(timezone.utc) - dt).total_seconds() > 26 * 3600:
+                sub += " · ⚠ " + _("stale — the collector has not run for over a day")
+        except ValueError:
+            pass
+    return (f'<div class="sec"><div class="sec-h"><h2>{_("External service limits")}</h2>'
+            f'<span class="ln"></span><span class="note">{sub}</span></div>'
+            f'<div class="card full">{"".join(rows)}</div></div>')
+
+
 def cron_count() -> int:
     try:
         d = json.loads(jobs_path().read_text(encoding="utf-8"))
@@ -355,6 +412,7 @@ def build_page(cfg: Config, lang: str, host: dict) -> str:
          section_html(_("Channels"), _("messengers and entry points · auto from platforms"), channels),
          section_html(_("Engine · AI · memory"), _("model chain · auto from config.yaml"), engine),
          section_html(_("Web access"), _("search / page reading / browser"), web),
+         limits_section(cfg, lang),
          section_html(_("Custom skills"), _("auto from skills/ ({n})").format(n=len(skills)), skills),
          section_html(_("Bundled Hermes packs"), _("built-in engine skills"), bundled_card),
          section_html(_("What is missing — candidates"), _("curated in dashboard.json"), candidates),
