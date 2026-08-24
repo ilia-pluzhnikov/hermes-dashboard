@@ -246,6 +246,23 @@ SEARCH_BACKENDS = [
 EXTRACT_BACKENDS = [(b, k, l) for b, k, l in SEARCH_BACKENDS if b != "brave-free"]
 
 
+def web_choice(y: dict, keys: set, kind: str) -> tuple[str, bool]:
+    """Which backend serves *kind* ("search" | "extract"), and is it pinned?
+
+    Mirrors agent/web_search_registry._resolve: an explicit web.{kind}_backend
+    (or web.backend) wins outright, otherwise the runtime walks its preference
+    order and takes the first backend that has a key. SEARCH_BACKENDS is kept
+    in that same order, so the first present entry is what the runtime picks.
+    """
+    web = y.get("web") or {}
+    pin = str(web.get(f"{kind}_backend") or web.get("backend") or "")
+    table = SEARCH_BACKENDS if kind == "search" else EXTRACT_BACKENDS
+    present = [b for b, k, _l in table if k in keys]
+    if pin and (kind == "search" or pin != "brave-free"):
+        return pin, True
+    return (present[0] if present else ""), False
+
+
 def build_web(cfg: Config, y: dict, lang: str, over: set[str] | None = None) -> list[dict]:
     """Web access grouped by function: search → page reading → browser.
 
@@ -255,15 +272,16 @@ def build_web(cfg: Config, y: dict, lang: str, over: set[str] | None = None) -> 
     """
     keys = env_key_names()
     dead = {s.lower() for s in (over or set())}
-    web = y.get("web") or {}
     cards = []
 
     present = [(b, lbl) for b, k, lbl in SEARCH_BACKENDS if k in keys]
-    active = str(web.get("search_backend") or web.get("backend") or (present[0][0] if present else ""))
+    active, _pinned = web_choice(y, keys, "search")
     present.sort(key=lambda p: p[0] != active)   # the active backend leads its group
     for b, lbl in present:
         st = "ok" if b == active else "avail"
-        role = _("active backend") if b == active else _("standby, key present")
+        # "standby" here means a key is on file — NOT that it takes over by
+        # itself: the runtime has no per-request failover, switching is a config edit.
+        role = _("active backend") if b == active else _("on standby · manual switch")
         ds = _desc(cfg, f"web:search:{b}", lang, _("web_search backend."))
         if lbl.lower() in dead:
             st = "part"
@@ -274,7 +292,7 @@ def build_web(cfg: Config, y: dict, lang: str, over: set[str] | None = None) -> 
                       "ds": _desc(cfg, "web:search", lang, _("web_search / web_extract: internet search and page reading."))})
 
     ex_present = [(b, lbl) for b, k, lbl in EXTRACT_BACKENDS if k in keys]
-    ex = str(web.get("extract_backend") or web.get("backend") or (ex_present[0][0] if ex_present else ""))
+    ex, _ex_pinned = web_choice(y, keys, "extract")
     if ex:
         ex_lbl = next((lbl for b, lbl in ex_present if b == ex), ex)
         st = "ok"
@@ -394,11 +412,42 @@ def card_html(c: dict) -> str:
             f'<div class="ds">{esc(c.get("ds", ""))}</div>{how}{tags}</div>')
 
 
-def section_html(title: str, sub: str, cards: list[dict]) -> str:
+def section_html(title: str, sub: str, cards: list[dict], foot: str = "") -> str:
     if not cards:
         return ""
+    tail = f'<div class="card full algo">{foot}</div>' if foot else ""
     return (f'<div class="sec filterable"><div class="sec-h"><h2>{esc(title)}</h2><span class="ln"></span>'
-            f'<span class="note">{esc(sub)}</span></div><div class="grid g3">{"".join(card_html(c) for c in cards)}</div></div>')
+            f'<span class="note">{esc(sub)}</span></div>'
+            f'<div class="grid g3">{"".join(card_html(c) for c in cards)}</div>{tail}</div>')
+
+
+def web_policy(y: dict) -> str:
+    """State + switching rule for the web section: what serves each capability
+    right now, how the runtime picked it, and the fact that nothing fails over."""
+    keys = env_key_names()
+    labels = {b: lbl for b, _k, lbl in SEARCH_BACKENDS}
+
+    def part(kind: str) -> str:
+        b, pinned = web_choice(y, keys, kind)
+        if not b:
+            return _("not configured")
+        how = _("pinned in config") if pinned else _("picked automatically — no pin")
+        return f"<b>{esc(labels.get(b, b))}</b> ({esc(how)})"
+
+    order = " → ".join(b for b, _k, _l in SEARCH_BACKENDS)
+    return (
+        _("Right now: search — {s}; page reading — {e}. Each capability is resolved on its own, "
+          "so one of them can be down while the other works.").format(s=part("search"), e=part("extract"))
+        + " "
+        + _("How the backend is chosen: an explicit <code>web.search_backend</code> / "
+            "<code>web.extract_backend</code> pin wins — even when its key is missing, so you get a precise "
+            "error instead of a silent switch; otherwise the only capable backend with a key; otherwise the "
+            "first one with a key in the built-in order {order}.").format(order=esc(order))
+        + " "
+        + _("<b>There is no per-request failover.</b> A standby backend never takes over on its own when the "
+            "active one errors or burns through its quota — switching means editing the config and restarting. "
+            "A key on file only means the switch is one line away.")
+    )
 
 
 def kpi(n, label, cls="", pill=None):
@@ -467,7 +516,7 @@ def build_page(cfg: Config, lang: str, host: dict) -> str:
          section_html(_("Plugins and bridges"), _("custom integrations around Hermes · auto from plugins/"), plugins),
          section_html(_("Channels"), _("messengers and entry points · auto from platforms"), channels),
          section_html(_("Engine · AI · memory"), _("model chain · auto from config.yaml"), engine),
-         section_html(_("Web access"), _("search / page reading / browser"), web),
+         section_html(_("Web access"), _("search / page reading / browser"), web, foot=web_policy(y)),
          limits_section(cfg, lang),
          section_html(_("Custom skills"), _("auto from skills/ ({n})").format(n=len(skills)), skills),
          section_html(_("Bundled Hermes packs"), _("built-in engine skills"), bundled_card),

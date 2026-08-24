@@ -566,7 +566,8 @@ class BuildTests(unittest.TestCase):
         en = pages["connectors.html"]
         # pinned backend is the active one; the other key is standby
         self.assertRegex(en, r'Brave Free</div><div class="sv">search · active backend')
-        self.assertRegex(en, r'Tavily</div><div class="sv">search · standby, key present')
+        # "standby" must not read as automatic failover — the runtime has none
+        self.assertRegex(en, r'Tavily</div><div class="sv">search · on standby · manual switch')
         # Tavily is at 100% in limits.json → its cards drop to "partly" with a pointer
         self.assertIn("Quota exhausted — see the limits section.", en)
         self.assertRegex(en, r'Tavily</div><div class="sv">search[^<]*</div></div><span class="pill p-part"')
@@ -574,9 +575,16 @@ class BuildTests(unittest.TestCase):
         self.assertRegex(en, r'Tavily</div><div class="sv">page reading \(web_extract\)')
         # Browserbase is under its limit → stays ok
         self.assertRegex(en, r'Browserbase</div><div class="sv">browser · cloud browser</div></div><span class="pill p-ok"')
+        # the section states the live choice, how it was made, and that nothing fails over
+        self.assertIn("Right now: search — <b>Brave Free</b> (pinned in config)", en)
+        self.assertIn("page reading — <b>Tavily</b> (picked automatically — no pin)", en)
+        self.assertIn("There is no per-request failover.", en)
+        self.assertIn("firecrawl → parallel → tavily → exa → brave-free", en)
         ru = pages["connectors.ru.html"]
         self.assertIn("поиск · активный бэкенд", ru)
         self.assertIn("чтение страниц (web_extract)", ru)
+        self.assertIn("наготове · переключение вручную", ru)
+        self.assertIn("Автофолбэка на запрос нет.", ru)
 
 
 class SettingsTests(unittest.TestCase):
