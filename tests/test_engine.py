@@ -20,7 +20,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from hermes_dashboard import common, config, i18n  # noqa: E402
+from hermes_dashboard import brand_icons, common, config, i18n  # noqa: E402
 
 
 def make_home(with_db: bool = True) -> Path:
@@ -530,6 +530,13 @@ class BuildTests(unittest.TestCase):
         self.assertIn("HTTP Error 401: Unauthorized", en)
         # a fresh snapshot carries no stale warning
         self.assertNotIn("stale — the collector", en)
+        # brand marks ride along with the names — inline SVG, monochrome, no raster
+        self.assertIn('<svg class="bi" viewBox="0 0 55 55"', en)      # Tavily
+        self.assertIn('<svg class="bi" viewBox="0 0 1080 1080"', en)  # Apify
+        self.assertNotIn("<img", en)
+        # an unknown vendor simply gets no mark, never a broken one
+        self.assertEqual(brand_icons.brand_icon("GitHub API"), "")
+        self.assertEqual(en.count('class="bi"'), ru.count('class="bi"'))
         for name in ("connectors.html", "connectors.ru.html"):
             self.assertEqual(pages[name].count("<div"), pages[name].count("</div>"), f"div balance in {name}")
         # stale snapshot (>26 h) is flagged

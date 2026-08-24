@@ -19,6 +19,7 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 
+from .brand_icons import brand_icon
 from .common import env_key_names, esc, home, jobs_path, ubar
 from .config import Config, current
 from .i18n import _, set_lang
@@ -342,8 +343,9 @@ def limits_section(cfg: Config, lang: str) -> str:
         if not isinstance(s, dict):
             continue
         nm = str(s.get("name", "?"))
+        ic = brand_icon(nm)
         if s.get("error"):
-            errors.append(f'<div class="ubar"><div class="ubh"><span>{esc(nm)}</span>'
+            errors.append(f'<div class="ubar"><div class="ubh"><span>{ic}{esc(nm)}</span>'
                           f'<b>{_("no data")}</b></div>'
                           f'<div class="ubp">{esc(str(s["error"]))}</div></div>')
             continue
@@ -352,7 +354,7 @@ def limits_section(cfg: Config, lang: str) -> str:
         except (TypeError, ValueError):
             continue
         ratio = used / limit if limit else 0.0
-        bars.append((ratio, ubar(nm, used, limit, cfg.text(s.get("note"), lang), warn_at=50)))
+        bars.append((ratio, ubar(nm, used, limit, cfg.text(s.get("note"), lang), warn_at=50, icon=ic)))
     bars.sort(key=lambda b: b[0], reverse=True)
     rows = [b[1] for b in bars] + errors
     if not rows:
@@ -386,7 +388,8 @@ def card_html(c: dict) -> str:
     how = f'<div class="how"><b>{_("how")}:</b> {esc(c["how"])}</div>' if c.get("how") else ""
     tags = ('<div class="meta2">' + "".join(f'<span class="mtag">{esc(t)}</span>' for t in c["tags"]) + "</div>") if c.get("tags") else ""
     return (f'<div class="ccard" data-status="{c.get("status", "avail")}"><div class="top"><div>'
-            f'<div class="nm">{esc(c["nm"])}</div><div class="sv">{esc(c.get("sv", ""))}</div></div>'
+            f'<div class="nm">{brand_icon(c["nm"])}{esc(c["nm"])}</div>'
+            f'<div class="sv">{esc(c.get("sv", ""))}</div></div>'
             f'<span class="pill {badge[0]}">{badge[1]}</span></div>'
             f'<div class="ds">{esc(c.get("ds", ""))}</div>{how}{tags}</div>')
 

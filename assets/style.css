@@ -385,6 +385,12 @@ body.lit .tilebase>.glow,body.lit .tilebase>.rim{opacity:1}
 .limits .ubh span{font-size:13.5px;font-weight:650;color:var(--ink);letter-spacing:.2px}
 .limits .ubh b{font-size:12px}
 .limits .ubar+.ubar{margin-top:16px}
+/* .bi — a service brand mark (brand_icons.py). Monochrome via currentColor, so it
+   inherits the colour of its own caption and survives both themes. Dimmed a
+   little: it labels the row, it should not compete with the bar's colour. */
+.bi{width:15px;height:15px;flex:0 0 auto;vertical-align:-2px;margin-right:8px;opacity:.8}
+.limits .ubh span{display:inline-flex;align-items:center}
+.ccard .nm .bi{width:14px;height:14px;margin-right:7px}
 .umrow{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:15px;position:relative;z-index:2}
 .um{background:var(--tile2);border:1px solid var(--edge2);border-radius:var(--radius-s);padding:9px 11px}
 .uml{font-family:var(--f-num);font-size:11px;color:var(--ink3);font-weight:500;text-transform:uppercase;

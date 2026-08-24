@@ -231,12 +231,13 @@ def sec(title: str, note: str, body: str, sec_id: str = "") -> str:
             f'<span class="ln"></span><span class="note">{esc(note)}</span></div>{body}</div>')
 
 
-def ubar(label: str, cur: int, limit: int, sub: str, warn_at: float = 85) -> str:
+def ubar(label: str, cur: int, limit: int, sub: str, warn_at: float = 85, icon: str = "") -> str:
     pct = (cur / limit * 100) if limit else 0
     w = max(2.0, min(100.0, pct))
     color = "var(--no)" if pct >= 100 else ("var(--part)" if pct >= warn_at else "var(--ok)")
+    # icon is ready-made inline SVG (brand_icons.brand_icon), never user text
     return (
-        f'<div class="ubar"><div class="ubh"><span>{esc(label)}</span>'
+        f'<div class="ubar"><div class="ubh"><span>{icon}{esc(label)}</span>'
         f'<b>{fmt_tok(cur)} / {fmt_tok(limit)}</b></div>'
         f'<div class="ubt"><span class="ubf" style="width:{w:.0f}%;background:{color}"></span></div>'
         f'<div class="ubp">{pct:.0f}% {esc(sub)}</div></div>'
