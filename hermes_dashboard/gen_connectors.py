@@ -291,21 +291,25 @@ def limits_section(cfg: Config, lang: str) -> str:
     data = load_limits(cfg)
     if not data:
         return ""
-    rows = []
+    # busiest first: the red bars are what the section exists for; error rows sink
+    bars, errors = [], []
     for s in data.get("services", []) or []:
         if not isinstance(s, dict):
             continue
         nm = str(s.get("name", "?"))
         if s.get("error"):
-            rows.append(f'<div class="ubar"><div class="ubh"><span>{esc(nm)}</span>'
-                        f'<b>{_("no data")}</b></div>'
-                        f'<div class="ubp">{esc(str(s["error"]))}</div></div>')
+            errors.append(f'<div class="ubar"><div class="ubh"><span>{esc(nm)}</span>'
+                          f'<b>{_("no data")}</b></div>'
+                          f'<div class="ubp">{esc(str(s["error"]))}</div></div>')
             continue
         try:
             used, limit = int(s.get("used", 0)), int(s.get("limit", 0))
         except (TypeError, ValueError):
             continue
-        rows.append(ubar(nm, used, limit, cfg.text(s.get("note"), lang)))
+        ratio = used / limit if limit else 0.0
+        bars.append((ratio, ubar(nm, used, limit, cfg.text(s.get("note"), lang), warn_at=50)))
+    bars.sort(key=lambda b: b[0], reverse=True)
+    rows = [b[1] for b in bars] + errors
     if not rows:
         return ""
     sub = _("used / limit · live from provider APIs")

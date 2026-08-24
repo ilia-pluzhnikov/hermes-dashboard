@@ -231,10 +231,10 @@ def sec(title: str, note: str, body: str, sec_id: str = "") -> str:
             f'<span class="ln"></span><span class="note">{esc(note)}</span></div>{body}</div>')
 
 
-def ubar(label: str, cur: int, limit: int, sub: str) -> str:
+def ubar(label: str, cur: int, limit: int, sub: str, warn_at: float = 85) -> str:
     pct = (cur / limit * 100) if limit else 0
     w = max(2.0, min(100.0, pct))
-    color = "var(--no)" if pct >= 100 else ("var(--part)" if pct >= 85 else "var(--ok)")
+    color = "var(--no)" if pct >= 100 else ("var(--part)" if pct >= warn_at else "var(--ok)")
     return (
         f'<div class="ubar"><div class="ubh"><span>{esc(label)}</span>'
         f'<b>{fmt_tok(cur)} / {fmt_tok(limit)}</b></div>'

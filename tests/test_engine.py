@@ -505,7 +505,8 @@ class BuildTests(unittest.TestCase):
         (home / "dashboard").mkdir(exist_ok=True)
         lim = {"generated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "services": [
             {"name": "Tavily", "used": 123, "limit": 1000, "note": {"en": "plan dev", "ru": "план dev"}},
-            {"name": "ElevenLabs", "used": 9000, "limit": 10000, "note": "tier free"},
+            {"name": "ElevenLabs", "used": 5500, "limit": 10000, "note": "tier free"},
+            {"name": "Apify", "used": 1001, "limit": 1000, "note": "over"},
             {"name": "GitHub API", "error": "HTTP Error 401: Unauthorized"},
         ]}
         (home / "dashboard" / "limits.json").write_text(json.dumps(lim), encoding="utf-8")
@@ -513,9 +514,15 @@ class BuildTests(unittest.TestCase):
         en, ru = pages["connectors.html"], pages["connectors.ru.html"]
         self.assertIn("External service limits", en)
         self.assertIn("Лимиты внешних сервисов", ru)
-        # thresholds land on the shared palette: 12% ok, 90% warning
+        # limits thresholds: warning already from 50% (not the shared 85), red at 100
         self.assertIn('style="width:12%;background:var(--ok)"', en)
-        self.assertIn('style="width:90%;background:var(--part)"', en)
+        self.assertIn('style="width:55%;background:var(--part)"', en)
+        self.assertIn('style="width:100%;background:var(--no)"', en)
+        # busiest first, error rows last
+        sec = en[en.index("External service limits"):]
+        order = [sec.index("Apify"), sec.index("ElevenLabs"), sec.index("Tavily"),
+                 sec.index("HTTP Error 401")]
+        self.assertEqual(order, sorted(order))
         self.assertIn("plan dev", en)
         self.assertIn("план dev", ru)
         # a failed collector entry renders as an honest "no data", not a broken bar
