@@ -320,7 +320,7 @@ def limits_section(cfg: Config, lang: str) -> str:
             pass
     return (f'<div class="sec"><div class="sec-h"><h2>{_("External service limits")}</h2>'
             f'<span class="ln"></span><span class="note">{sub}</span></div>'
-            f'<div class="card full">{"".join(rows)}</div></div>')
+            f'<div class="card full limits">{"".join(rows)}</div></div>')
 
 
 def cron_count() -> int:

@@ -379,6 +379,12 @@ body.lit .tilebase>.glow,body.lit .tilebase>.rim{opacity:1}
 .ubt{height:7px;background:var(--edge3);border-radius:4px;overflow:hidden}
 .ubf{display:block;height:100%;border-radius:4px;transition:width .7s cubic-bezier(.2,.85,.25,1)}
 .ubp{font-family:var(--f-num);font-size:10px;color:var(--ink3);margin-top:6px}
+/* .limits — the service-limits card (connectors page): the service name is the
+   anchor of each row, so it gets headline weight; plain .ubar rows elsewhere
+   (usage page) keep the quiet label. */
+.limits .ubh span{font-size:13.5px;font-weight:650;color:var(--ink);letter-spacing:.2px}
+.limits .ubh b{font-size:12px}
+.limits .ubar+.ubar{margin-top:16px}
 .umrow{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:15px;position:relative;z-index:2}
 .um{background:var(--tile2);border:1px solid var(--edge2);border-radius:var(--radius-s);padding:9px 11px}
 .uml{font-family:var(--f-num);font-size:8.5px;color:var(--ink3);font-weight:500;text-transform:uppercase;
