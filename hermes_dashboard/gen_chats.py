@@ -28,7 +28,7 @@ def build() -> str:
                 "coalesce(display_name,'') dn, coalesce(source,'') src, count(*) sess, "
                 "coalesce(sum(api_call_count),0) calls, "
                 "coalesce(sum(input_tokens+output_tokens+reasoning_tokens),0) tok "
-                "FROM sessions WHERE source NOT IN ('cron','cli','subagent','tool','tui') AND " + active() +
+                "FROM sessions WHERE source NOT IN ('cron','cli','subagent','tool','tui','oneshot') AND " + active() +
                 " AND started_at>=strftime('%s','now','-30 days') "
                 "GROUP BY cid, ctype, dn, src ORDER BY calls DESC"
             ).fetchall()
